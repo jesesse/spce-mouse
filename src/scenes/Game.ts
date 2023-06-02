@@ -1,44 +1,64 @@
 import Phaser from 'phaser'
+import RocketMouse from '../game/RocketMouse';
 
 export default class Game extends Phaser.Scene {
 
-	private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+
+	private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
+	private player!: RocketMouse;
 	private background!: Phaser.GameObjects.TileSprite;
 	private mousehole!: Phaser.GameObjects.Image;
-	private window1!: Phaser.GameObjects.Image;
-	private window2!: Phaser.GameObjects.Image;
-	private bookcase1!: Phaser.GameObjects.Image;
-	private bookcase2!: Phaser.GameObjects.Image;
+	private windows: Phaser.GameObjects.Image[] = [];
+	private bookcases: Phaser.GameObjects.Image[] = [];
 
 	constructor() {
 		super('game')
 	}
 
-	private wrapMosehole(){
+	private wrapMosehole() {
 		if (this.mousehole.x < this.cameras.main.scrollX - this.mousehole.width) {
-			this.mousehole.x = Phaser.Math.Between(this.player.x + 1000, this.player.x + 5000)
+			const newX = Phaser.Math.Between(this.player.x + 300, this.player.x + 6000);
+			if (!this.isOverlapping(newX)) this.mousehole.x = newX;
+			else return;
 		}
 	}
 
-	private wrapWindows(){
-		if (this.window1.x < this.cameras.main.scrollX - this.window1.width) {
-			this.window1.x = Phaser.Math.Between(this.window2.x + this.scale.width, this.window2.x + 3000)
+	private wrapWindows() {
+		for (let i = 0; i < this.windows.length; i++) {
+			if (this.windows[i].x < this.cameras.main.scrollX - this.windows[i].width) {
+				const newX = Phaser.Math.Between(this.player.x + 300, this.player.x + 6000);
+				if (!this.isOverlapping(newX)) {
+					this.windows[i].x = newX;
+				} else continue;
+			}
 		}
+	}
 
-		if (this.window2.x < this.cameras.main.scrollX - this.window2.width) {
-			this.window2.x = Phaser.Math.Between(this.window1.x + 1000, this.window1.x + 4000)
+	private wrapBookcases() {
+		for (let i = 0; i < this.bookcases.length; i++) {
+			if (this.bookcases[i].x < this.cameras.main.scrollX - this.bookcases[i].width) {
+				const newX = Phaser.Math.Between(this.player.x + 300, this.player.x + 6000);
+				if (!this.isOverlapping(newX)) {
+					this.bookcases[i].x = newX;
+				} else continue;
+			}
 		}
 	}
 
-	private wrapBookcases(){
-		if (this.bookcase1.x < this.cameras.main.scrollX - this.bookcase1.width) {
-			this.bookcase1.x = Phaser.Math.Between(this.cameras.main.scrollX + this.scale.width, this.player.x + 4000)
+	private isOverlapping(x: number) {
+		for (let i = 0; i < this.windows.length; i++) {
+			if (x < this.windows[i].x + this.windows[i].width) return true;
 		}
 
-		if (this.bookcase2.x < this.cameras.main.scrollX - this.bookcase2.width) {
-			this.bookcase2.x = Phaser.Math.Between(this.bookcase1.x + 2000, this.bookcase1.x + 4000)
+		for (let i = 0; i < this.bookcases.length; i++) {
+			if (x < this.bookcases[i].x + this.bookcases[i].width) return true;
 		}
+
+		if (x < this.mousehole.x + this.mousehole.width) return true;
+
+		return false;
 	}
+
 
 
 	create() {
@@ -47,20 +67,20 @@ export default class Game extends Phaser.Scene {
 
 		this.background = this.add.tileSprite(0, 0, width, height, 'background').setOrigin(0, 0).setScrollFactor(0, 0);
 		this.mousehole = this.add.image(width + 50, height - 135, 'mousehole')
-		this.window1 = this.add.image(width / 2, height - 400, 'window1');
-		this.window2 = this.add.image(width + 1000, height - 400, 'window2');
-		this.bookcase1 = this.add.image(this.window1.x + 500, height - 260, 'bookcase1');
-		this.bookcase2 = this.add.image(this.bookcase1.x + 500, height - 350, 'bookcase2');
+		this.windows.push(this.add.image(width + 200, height - 400, 'window1'));
+		this.windows.push(this.add.image(width + 500, height - 400, 'window2'));
+		this.bookcases.push(this.add.image(width + 800, height - 260, 'bookcase1'));
+		this.bookcases.push(this.add.image(width + 1200, height - 350, 'bookcase2'));
 
+		this.cursors = this.input.keyboard.createCursorKeys()
+
+		this.player = new RocketMouse(this, width / 2, height - 30);
+		this.add.existing(this.player);
+		const body = this.player.body as Phaser.Physics.Arcade.Body
+		body.setCollideWorldBounds(true)
+		body.setVelocityX(200)
 
 		this.physics.world.setBounds(0, 0, Number.MAX_SAFE_INTEGER, height - 30);
-
-		this.player = this.physics.add.sprite(width / 2, height - 30, 'rocket-mouse', 'rocketmouse_fly01.png').setOrigin(0.5, 1)
-		this.player.body.setCollideWorldBounds(true);
-
-		this.player.setVelocityX(200);
-		this.player.anims.play('rocketmouse_run');
-
 		this.cameras.main.startFollow(this.player);
 		this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, height)
 	}
@@ -70,5 +90,11 @@ export default class Game extends Phaser.Scene {
 		this.wrapMosehole();
 		this.wrapWindows();
 		this.wrapBookcases();
+
+		if (this.cursors.space?.isDown) {
+			this.player.enableJetpack(true);
+		} else {
+			this.player.enableJetpack(false);
+		}
 	}
 }
